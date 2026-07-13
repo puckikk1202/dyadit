@@ -1,0 +1,49 @@
+# VQ-VAE Configuration
+# Configuration file for VQ-VAE training, inference, and visualization
+
+# Experiment settings
+exp_name: vqvae_motion_training
+seed: 222
+
+# Data configuration
+data:
+  # Dataset settings
+  data_path: /mnt/nas2/Projects/meta_data/naturalistic/train/
+  batch_size: 256
+  num_workers: 0  # Set to 0 when using preload_to_memory or for stability
+  pin_memory: true
+  
+  # Data preprocessing
+  use_6d_rotation: true
+  normalize_motion: true
+  
+  # Data loading optimization options:
+  # Option 1 (FASTEST): Preload all data to memory - recommended for small datasets (<1GB)
+  preload_to_memory: false
+  
+  # Option 2 (FAST): Use precomputed 6D rotation files from disk
+  use_precomputed_6d: true
+  precomputed_6d_dir: "/home/klab-user/dyadic_dit/data/train_motion_tsubome_6d_rotation"
+  
+  # Option 3 (SLOW): On-the-fly conversion - set both above to false
+  
+  # Skip audio loading for motion-only training (e.g., VQ-VAE) - MASSIVE speedup (585x)
+  skip_audio: true
+  
+  # Dataset filtering (optional - uncomment if needed)
+  # max_files: 10  # Limit number of files to load
+  # specific_files:  # Load specific files only
+  #   - V00_S1819_I00001006_P1103A.npz
+  
+  # Sampling strategy
+  samples_per_conversation: -1  # -1 means use all possible non-overlapping segments
+
+# Model configuration
+model:
+  # Motion properties
+  pose_dim: 258  # Motion dimension (258 for 6D rotation)
+  pose_length: 96  # Sequence length in frames
+  pose_fps: 30  # Frames per second
+  
+  # Audio properties (not used in VQ-VAE training, but kept for dataset compatibility)
+  audio_sr: 16000  # Audio sample rate
