@@ -15,7 +15,6 @@ logger:
   wandb:
     project: "dyadit_audio2pose"
     entity: -  # Replace with your wandb entity
-    api_key: -
 
 # Trainer configuration
 trainer:
