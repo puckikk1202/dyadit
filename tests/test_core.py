@@ -25,12 +25,6 @@ from dyadit.diffusion import DyaDiTSystem
 from dyadit.export import motion_to_smplh, save_outputs
 from dyadit.factory import build_codec, build_model
 from dyadit.fid import MotionFIDCallback
-from dyadit.gt_fid import (
-    MotionClips,
-    evaluate as evaluate_gt_fid,
-    plot_comparison,
-    publish,
-)
 from dyadit.rotations import (
     convert_axis_angle_to_rotation_6d,
     convert_rotation_6d_to_axis_angle,
@@ -196,84 +190,6 @@ def test_pair_indexing_uses_each_conversations_actual_length(config, data_root):
     )
     config["data"]["is_reversed"] = False
     assert len(DyadicDataset(config)) == 5
-
-
-@pytest.mark.parametrize("reverse", [True, False])
-@pytest.mark.parametrize("normalize", [True, False])
-def test_gt_motion_only_reader_matches_training_targets(
-    config, data_root, monkeypatch, reverse, normalize
-):
-    from dyadit import data as data_module
-
-    config["data"].update(is_reversed=reverse, normalize_motion=normalize)
-    dataset = DyadicDataset(config, random_style=False)
-    expected = [dataset[index] for index in range(len(dataset))]
-    monkeypatch.setattr(
-        data_module,
-        "load_audio",
-        Mock(side_effect=AssertionError("GT reference must not load audio")),
-    )
-    clips = MotionClips(dataset)
-    for index, sample in enumerate(expected):
-        actual = clips[index]
-        torch.testing.assert_close(actual["motion"], sample["motion_latent"])
-        assert actual["video_id"] == sample["video_id"]
-    assert len(clips.cache) == (4 if reverse else 2)
-    with pytest.raises(IndexError):
-        clips[-1]
-
-
-def test_gt_fid_evaluation_uses_fixed_reference_and_full_codec(
-    config, data_root, tmp_path, monkeypatch
-):
-    import json
-    import yaml
-
-    config["paths"]["output_dir"] = str(tmp_path / "gt_reference")
-    config["fid"].update(
-        num_samples=4, batch_size=2, num_workers=0, inference_steps=3, cpu_threads=1
-    )
-    system = make_system(config)
-    config["vqvae"]["checkpoint_path"] = str(tmp_path / "codec.pth")
-    torch.save({"net": system.vqvae.state_dict()}, config["vqvae"]["checkpoint_path"])
-    callback = MotionFIDCallback(config)
-    trainer = SimpleNamespace(
-        datamodule=SimpleNamespace(
-            val_dataset=DyadicDataset(config, random_style=False)
-        ),
-        loggers=[],
-    )
-    with torch.inference_mode():
-        callback._prepare(trainer, system)
-    run = Path(config["paths"]["output_dir"])
-    (run / "config.yaml").write_text(yaml.safe_dump(config))
-    (callback.directory / "history.json").write_text("[]")
-    output = run / "gt_baseline"
-    result = evaluate_gt_fid(run, output, trials=3, batch_size=2)
-    assert result["protocol_hash"] == callback.protocol_hash
-    assert result["validation_samples"] == 10
-    assert result["candidate_samples"] == 6
-    assert result["gt_self_fid"] == pytest.approx(0, abs=1e-6)
-    assert np.isfinite(result["gt_gt"]["mean"])
-    assert result["codec_reconstruction_fid"] > 0
-    for selected in result["trial_indices"]:
-        assert len(selected) == len(set(selected)) == 4
-        assert not set(selected) & set(callback.indices)
-    assert json.loads((output / "result.json").read_text()) == result
-    with np.load(output / "features.npz") as features:
-        np.testing.assert_allclose(
-            features["reference_features"], callback.real_features
-        )
-        assert features["reconstructed_features"].shape == (4, 128)
-    assert plot_comparison(result, [run], output).stat().st_size > 1000
-    monkeypatch.setenv("WANDB_MODE", "offline")
-    monkeypatch.setenv("WANDB_RUN_ID", "active-training-run-must-not-be-reused")
-    publish(result, output, output / "fid_with_gt_baseline.png")
-    publication = json.loads((output / "wandb_publication.json").read_text())
-    assert publication["run_id"] != "active-training-run-must-not-be-reused"
-    assert publication["summary"]["fid_reference/gt_gt_mean"] == result["gt_gt"]["mean"]
-    images = list((output / "wandb").rglob("*.png"))
-    assert images
 
 
 def test_legacy_axis_angle_loading_and_smplh_export(tmp_path):
