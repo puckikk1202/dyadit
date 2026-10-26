@@ -1,0 +1,9 @@
+# Optional dependencies for render.py; install alongside requirements.txt.
+smplx>=0.1.28
+scipy>=1.10
+imageio>=2.28
+imageio-ffmpeg>=0.4.8
+opencv-python-headless>=4.7
+# Optional hardware/Mesa backend; --backend software needs neither of these.
+trimesh>=3.20
+pyrender>=0.1.45

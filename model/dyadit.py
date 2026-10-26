@@ -377,8 +377,15 @@ class Audio2PoseDiTDual_VQVAE(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        # Speech encoders have already loaded pretrained weights. Initialize
+        # only the newly added motion and conditioning layers.
+        pretrained = {
+            id(module)
+            for encoder in (self.audio_encoder, self.audio_encoder_other)
+            for module in encoder.modules()
+        }
         for m in self.modules():
-            if isinstance(m, nn.Linear):
+            if id(m) not in pretrained and isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)

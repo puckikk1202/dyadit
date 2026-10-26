@@ -1,31 +1,13 @@
-# Core deep learning
-torch>=2.0.0
-torchaudio>=2.0.0
-pytorch-lightning>=2.0.0
-lightning>=2.0.0
-
-# Diffusion and pretrained audio encoders
-diffusers>=0.20.0
-transformers>=4.30.0
-
-# Data, audio, and scientific computing
-numpy>=1.24.0
-pandas>=2.0.0
-scipy>=1.10.0
-librosa>=0.10.0
-soundfile>=0.12.0
-PyYAML>=6.0.0
-omegaconf>=2.3.0
-
-# Model utilities and visualization
-einops>=0.7.0
-matplotlib>=3.7.0
-tqdm>=4.65.0
-tensorboard>=2.13.0
-wandb>=0.15.0
-
-# Optional: datasets/renderer_test.py
-smplx>=0.1.28
-trimesh>=3.20.0
-pyrender>=0.1.45
-imageio>=2.28.0
+torch>=2.0
+pytorch-lightning>=2.0
+diffusers>=0.20
+transformers>=4.30
+numpy>=1.24
+PyYAML>=6.0
+einops>=0.7
+soundfile>=0.12
+tensorboard>=2.13
+wandb>=0.15
+matplotlib>=3.6
+# Optional: librosa for WAV/MP3 input. Training previews also need requirements-render.txt.
+# Tests: pytest>=7

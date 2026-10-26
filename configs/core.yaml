@@ -1,0 +1,121 @@
+# Core architecture and training settings from configs/ours_vqvae_tsubame.yaml.
+# Paths are relative to this file. Runtime overrides use: --set key=value.
+exp_name: dyadit_core
+seed: 222
+
+paths:
+  data_root: ../data/train
+  val_data_root: ../data/validation
+  normalization_stats: null  # Defaults to data_root/motion_6d_normalization.npz.
+  output_dir: ../outputs
+
+data:
+  batch_size: 256
+  num_workers: 4
+  pin_memory: true
+  normalize_motion: true
+  samples_per_conversation: -1
+  is_reversed: true
+
+model:
+  pose_dim: 64
+  pose_fps: 30
+  audio_sr: 16000
+  pose_length: 96          # Original motion frames.
+  mask_length: 4           # Latent steps: 4 steps = 16 motion frames.
+  model_dim: 512
+  ffn_dim: 2048
+  heads: 4
+  layers: 4
+  time_dim: 512
+  use_cross_attn: true
+  use_rope: true
+  fusion_drop: 0.2
+  style_drop: 0.2
+  relat_drop: 0.2
+  person_drop: 0.2
+  motion_other_drop: 0.2
+  wav2vec_layers: 1
+  audio_model_name: facebook/wav2vec2-base-960h  # May also be a local pretrained directory.
+  motion_bank_size: 1000
+  orthogonal_fusion: true
+
+vqvae:
+  nb_joints: 258
+  output_emb_width: 64
+  code_dim: 512
+  depth: 4
+  downsample_factor: 4
+  checkpoint_path: ../checkpoints/net_best.pth
+
+training:
+  lr: 5.66e-4
+  weight_decay: 0.0
+  betas: [0.9, 0.95]
+  diffusion:
+    num_train_timesteps: 1000
+    objective: eps
+    scheduler_type: dpm_solver
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: linear
+    variance_type: fixed_small
+    clip_sample: false
+    prediction_type: epsilon
+  checkpoint:
+    save_top_k: 3
+
+trainer:
+  max_epochs: 2000
+  accelerator: gpu
+  devices: 4
+  num_nodes: 1
+  precision: bf16-mixed
+  gradient_clip_val: 1.0
+  log_every_n_steps: 10
+  strategy: ddp_find_unused_parameters_true
+
+logger:
+  type: wandb               # Use tensorboard with visualization.enabled=false.
+  project: dyadit
+  entity: null
+
+fid:
+  enabled: true
+  every_n_epochs: 1
+  num_samples: 256          # Fixed validation subset, independent of the 10 videos.
+  batch_size: 32
+  num_workers: 4
+  pose_length: 96           # Motion-FID on train-length clips, not the 600-frame videos.
+  window_frames: 96
+  stride_frames: 80
+  inference_steps: 50
+  guidance_scale: 1.0
+  reference_prefix: true
+  exclude_reference_prefix: true  # Exclude the copied first 16 frames from both sides.
+  seed: 222
+  cpu_threads: 4
+
+visualization:
+  enabled: true
+  every_n_epochs: 5         # Completed epochs 5, 10, 15, ...; no sanity-check previews.
+  num_samples: 10           # Fixed validation indices across epochs; no training data.
+  pose_length: 600          # 20-second inference clips; train/val loss still use 96 frames.
+  window_frames: 96         # Same generation windows as standalone inference.py.
+  stride_frames: 80         # 16-frame overlap between neighboring windows.
+  seed: 222                 # Fixed diffusion noise, independent of the training RNG.
+  inference_steps: 50
+  guidance_scale: 1.0
+  reference_prefix: true    # Same reference-prefix conditioning as inference.py.
+  model_path: /gs/bs/tga-koike-crescent/EasyMocap/data/smplx/smplh
+  cpu_threads: 4
+  render:
+    width: 640
+    height: 480
+    backend: software       # Stable headless CPU renderer; use auto/egl if desired.
+    device: cpu             # Do not consume training GPU memory for SMPL-H meshes.
+    batch_size: 16
+    step: 2                 # 30 fps motion -> 15 fps video, without speeding up audio.
+    lower_body: neutral
+    audio_normalize: true
+    audio_layout: stereo     # Blue/condition on left, orange/generated on right.

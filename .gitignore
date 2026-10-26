@@ -1,2 +1,14 @@
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 *.py[cod]
+data/
+checkpoints/
+outputs/
+inference_outputs/
+wandb/
+.env
+.env.*
+!.env.example
+.netrc
+*.logs
